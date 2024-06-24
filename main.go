@@ -2,21 +2,27 @@ package main
 
 import (
 	"bytes"
+	_ "embed"
 	"fmt"
 	"io"
 	"os"
+	"slices"
+	"strings"
 	"sync"
 )
 
 const (
-	BUFF_LEN      = 24_000
-	LEFTOVER_LEN  = 128
-	ROUTINE_COUNT = 4
+	BUFF_LEN      = 48 * 1024
+	LEFTOVER_LEN  = 36
+	ROUTINE_COUNT = 24
 )
+
+//go:embed measurements-1000000000.out
+var expected string
 
 func main() {
 	var err error
-	var i int
+	var i, n int
 
 	// Start a number of background processes
 	results := map[string]*City{}
@@ -35,7 +41,7 @@ func main() {
 		})(chunkSenderChnl, resultChnl)
 	}
 
-	// Start parsing results comming from the resultChnl
+	// Start parsing results coming from the resultChnl
 	var wg sync.WaitGroup
 	go (func() {
 		for {
@@ -65,7 +71,7 @@ func main() {
 	var chunk []byte
 	buff := make([]byte, BUFF_LEN)
 	for {
-		_, err = f.Read(buff)
+		n, err = f.Read(buff)
 		if err != nil {
 			if err != io.EOF {
 				panic(err)
@@ -75,7 +81,7 @@ func main() {
 		}
 
 		// Full buffer, cut of last part
-		if len(buff) == BUFF_LEN {
+		if n == BUFF_LEN {
 			// Search for the last newline to fill the leftover
 			for i = BUFF_LEN - 1; i > 0; i-- {
 				if buff[i] == '\n' {
@@ -93,7 +99,7 @@ func main() {
 			leftOver = make([]byte, len(buff[i+1:]))
 			copy(leftOver, buff[i+1:])
 		} else {
-			chunk = buff
+			chunk = buff[:n]
 			prefix = leftOver
 		}
 
@@ -105,7 +111,31 @@ func main() {
 	wg.Wait()
 	close(resultChnl)
 
-	fmt.Println(results)
+	// Sort the results
+	keys := make([]string, 0, len(results))
+	for k := range results {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+	sortedResults := make([]*City, len(results))
+	for i, k := range keys {
+		sortedResults[i] = results[k]
+	}
+
+	// Le special output
+	cities := make([]string, 0, len(sortedResults))
+	for _, r := range sortedResults {
+		cities = append(cities, r.ToString())
+	}
+
+	r := "{" + strings.Join(cities, ", ") + "}"
+	fmt.Println(r)
+
+	if r == expected {
+		fmt.Println("Correct!")
+	} else {
+		fmt.Println("No no no...")
+	}
 }
 
 // parseBuffer cuts a chunk in lines and parses each line
@@ -152,14 +182,8 @@ func parseLine(line []byte) (string, int) {
 
 	// Super simple number parser
 	var number int
-	var gotdot bool
 	for _, c := range parts[1] {
-		if c == '-' {
-			continue
-		}
-
-		if c == '.' {
-			gotdot = true
+		if c == '-' || c == '.' {
 			continue
 		}
 
@@ -168,10 +192,6 @@ func parseLine(line []byte) (string, int) {
 
 	if parts[1][0] == '-' {
 		number *= -1
-	}
-
-	if !gotdot {
-		number *= 10
 	}
 
 	return string(parts[0]), number

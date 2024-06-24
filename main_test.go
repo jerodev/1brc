@@ -3,7 +3,7 @@ package main
 import "testing"
 
 func TestParseLine(t *testing.T) {
-	city, temp := parseLine([]byte("Waregem;18"))
+	city, temp := parseLine([]byte("Waregem;18.0"))
 	if city != "Waregem" || temp != 180 {
 		t.Errorf("Expected Waregem 180°, got %s %v°", city, temp)
 	}
