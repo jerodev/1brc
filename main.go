@@ -87,10 +87,7 @@ func main() {
 				}
 			}
 
-			// Copy prefix from last run leftovers
-			prefix = make([]byte, len(leftOver))
-			copy(prefix, leftOver)
-
+			prefix = leftOver
 			chunk = buff[:i]
 
 			// Copy leftovers from buffer
@@ -172,17 +169,15 @@ func parseLine(line []byte) (string, int) {
 			break
 		}
 
-		if line[ptr] >= '0' && line[ptr] <= '9' {
-			number += int(line[ptr]-'0') * ten
-			ten *= 10
-
-			continue
-		}
-
 		if line[ptr] == '-' {
 			number *= -1
 			ptr--
 			break
+		}
+
+		if line[ptr] >= '0' && line[ptr] <= '9' {
+			number += int(line[ptr]-'0') * ten
+			ten *= 10
 		}
 	}
 

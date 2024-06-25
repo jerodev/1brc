@@ -20,8 +20,7 @@ func (r *City) Merge(temperatures []int) {
 
 		if t < r.Min {
 			r.Min = t
-		}
-		if t > r.Max {
+		} else if t > r.Max {
 			r.Max = t
 		}
 	}
