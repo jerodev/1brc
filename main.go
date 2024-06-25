@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	_ "embed"
 	"fmt"
 	"io"
@@ -146,8 +145,8 @@ func parseBuffer(tx chan map[string][]int, chunk []byte) {
 	results := map[string][]int{}
 
 	var start, ptr int
-	for _, c := range chunk {
-		if c == '\n' {
+	for ptr = range chunk {
+		if chunk[ptr] == '\n' {
 			city, temp = parseLine(chunk[start:ptr])
 
 			if _, ok = results[city]; ok {
@@ -158,11 +157,7 @@ func parseBuffer(tx chan map[string][]int, chunk []byte) {
 
 			ptr++
 			start = ptr
-
-			continue
 		}
-
-		ptr++
 	}
 
 	tx <- results
@@ -170,21 +165,26 @@ func parseBuffer(tx chan map[string][]int, chunk []byte) {
 
 // Parse line returns the name of the city and the temperature as an integer
 func parseLine(line []byte) (string, int) {
-	parts := bytes.SplitN(line, []byte{';'}, 2)
+	var number, ptr int
+	ten := 1
+	for ptr = len(line) - 1; ptr >= 0; ptr-- {
+		if line[ptr] == ';' {
+			break
+		}
 
-	// Super simple number parser
-	var number int
-	for _, c := range parts[1] {
-		if c == '-' || c == '.' {
+		if line[ptr] >= '0' && line[ptr] <= '9' {
+			number += int(line[ptr]-'0') * ten
+			ten *= 10
+
 			continue
 		}
 
-		number = number*10 + int(c-'0')
+		if line[ptr] == '-' {
+			number *= -1
+			ptr--
+			break
+		}
 	}
 
-	if parts[1][0] == '-' {
-		number *= -1
-	}
-
-	return string(parts[0]), number
+	return string(line[:ptr]), number
 }
