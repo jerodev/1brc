@@ -12,9 +12,9 @@ import (
 )
 
 const (
-	BUFF_LEN      = 48 * 1024
+	BUFF_LEN      = 2 * 1024 * 1024
 	LEFTOVER_LEN  = 36
-	ROUTINE_COUNT = 24
+	ROUTINE_COUNT = 12
 )
 
 //go:embed measurements-1000000000.out
@@ -29,7 +29,7 @@ func main() {
 	resultChnl := make(chan map[string][]int, ROUTINE_COUNT*2)
 	chunkSenderChnl := make(chan []byte, ROUTINE_COUNT*2)
 	for range ROUTINE_COUNT {
-		go (func(rx chan []byte, tx chan map[string][]int) {
+		go func(rx chan []byte, tx chan map[string][]int) {
 			for {
 				chunk, more := <-rx
 				if !more {
@@ -38,12 +38,12 @@ func main() {
 
 				parseBuffer(tx, chunk)
 			}
-		})(chunkSenderChnl, resultChnl)
+		}(chunkSenderChnl, resultChnl)
 	}
 
 	// Start parsing results coming from the resultChnl
 	var wg sync.WaitGroup
-	go (func() {
+	go func() {
 		for {
 			r, more := <-resultChnl
 			if !more {
@@ -60,7 +60,7 @@ func main() {
 
 			wg.Done()
 		}
-	})()
+	}()
 
 	f, _ := os.Open("measurements-1000000000.txt")
 	defer f.Close()
@@ -176,9 +176,6 @@ func parseBuffer(tx chan map[string][]int, chunk []byte) {
 // Parse line returns the name of the city and the temperature as an integer
 func parseLine(line []byte) (string, int) {
 	parts := bytes.SplitN(line, []byte{';'}, 2)
-	if len(parts) != 2 {
-		panic(string(line))
-	}
 
 	// Super simple number parser
 	var number int
