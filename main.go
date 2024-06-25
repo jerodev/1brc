@@ -13,7 +13,6 @@ import (
 
 const (
 	BUFF_LEN      = 2 * 1024 * 1024
-	LEFTOVER_LEN  = 36
 	ROUTINE_COUNT = 12
 )
 
@@ -144,30 +143,26 @@ func parseBuffer(tx chan map[string][]int, chunk []byte) {
 	var temp int
 	var ok bool
 
-	line := make([]byte, 0, LEFTOVER_LEN)
 	results := map[string][]int{}
 
+	var start, ptr int
 	for _, c := range chunk {
 		if c == '\n' {
-			if len(line) > 0 {
-				if !bytes.ContainsRune(line, ';') {
-					panic(string(chunk))
-				}
+			city, temp = parseLine(chunk[start:ptr])
 
-				city, temp = parseLine(line)
-
-				if _, ok = results[city]; ok {
-					results[city] = append(results[city], temp)
-				} else {
-					results[city] = []int{temp}
-				}
-
-				line = make([]byte, 0, LEFTOVER_LEN)
-				continue
+			if _, ok = results[city]; ok {
+				results[city] = append(results[city], temp)
+			} else {
+				results[city] = []int{temp}
 			}
+
+			ptr++
+			start = ptr
+
+			continue
 		}
 
-		line = append(line, c)
+		ptr++
 	}
 
 	tx <- results
