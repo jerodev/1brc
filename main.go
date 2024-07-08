@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	BUFF_LEN      = 2 * 1024 * 1024
+	CHUNK_SIZE    = 4 * 1024 * 1024
 	ROUTINE_COUNT = 12
 )
 
@@ -20,10 +20,9 @@ var expected string
 
 func main() {
 	var err error
-	var i, n int
+	var n int
 
 	// Start a number of background processes
-	results := map[string]*City{}
 	resultChnl := make(chan map[string][]int, ROUTINE_COUNT*2)
 	chunkSenderChnl := make(chan []byte, ROUTINE_COUNT*2)
 	for range ROUTINE_COUNT {
@@ -39,7 +38,8 @@ func main() {
 		}(chunkSenderChnl, resultChnl)
 	}
 
-	// Start parsing results coming from the resultChnl
+	// Start the result aggregator
+	results := map[string]*City{}
 	var wg sync.WaitGroup
 	go func() {
 		for {
@@ -65,9 +65,7 @@ func main() {
 
 	// Read the file in chunks and send data on the channels
 	var leftOver []byte
-	var prefix []byte
-	var chunk []byte
-	buff := make([]byte, BUFF_LEN)
+	buff := make([]byte, CHUNK_SIZE)
 	for {
 		n, err = f.Read(buff)
 		if err != nil {
@@ -78,28 +76,21 @@ func main() {
 			break
 		}
 
-		// Full buffer, cut of last part
-		if n == BUFF_LEN {
-			// Search for the last newline to fill the leftover
-			for i = BUFF_LEN - 1; i > 0; i-- {
-				if buff[i] == '\n' {
+		// Full buffer, cut off any incomplete line
+		if n == CHUNK_SIZE {
+			for n = CHUNK_SIZE - 1; n > 0; n-- {
+				if buff[n] == '\n' {
 					break
 				}
 			}
-
-			prefix = leftOver
-			chunk = buff[:i]
-
-			// Copy leftovers from buffer
-			leftOver = make([]byte, len(buff[i+1:]))
-			copy(leftOver, buff[i+1:])
-		} else {
-			chunk = buff[:n]
-			prefix = leftOver
 		}
 
 		wg.Add(1)
-		chunkSenderChnl <- append(prefix, chunk...)
+		chunkSenderChnl <- append(leftOver, buff[:n]...)
+
+		// Copy leftovers for next chunk
+		leftOver = make([]byte, CHUNK_SIZE-1-n)
+		copy(leftOver, buff[n+1:])
 	}
 	close(chunkSenderChnl)
 

@@ -27,9 +27,9 @@ func (r *City) Merge(temperatures []int) {
 }
 
 func (r *City) ToString() string {
-	minVal := math.Round(float64(r.Min)) / 10
+	minVal := float32(r.Min) / 10
 	avgVal := math.Round(float64(r.Sum)/float64(r.Count)) / 10
-	maxVal := math.Round(float64(r.Max)) / 10
+	maxVal := float32(r.Max) / 10
 
 	return r.Name + "=" + fmt.Sprintf("%.1f", minVal) + "/" + fmt.Sprintf("%.1f", avgVal) + "/" + fmt.Sprintf("%.1f", maxVal)
 }
