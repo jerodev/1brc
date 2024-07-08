@@ -22,7 +22,7 @@ func TestParseChunk(t *testing.T) {
 
 	result := <-tx
 
-	if result["Gent"][0] != 130 || result["Gent"][1] != -131 {
+	if result["Gent"][0] != 130 || result["Gent"][1] != -130 {
 		t.Error("Expected temperatures in Gent to be [130 -130], but got", result["Gent"])
 	}
 	if result["Deinze"][0] != -880 {
